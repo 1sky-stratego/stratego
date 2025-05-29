@@ -1,0 +1,28 @@
+# Alpaca Trading API
+alpaca-trade-api>=3.0.0
+alpaca-py>=0.7.0
+
+# Data Analysis & Manipulation
+pandas>=1.5.0
+numpy>=1.24.0
+matplotlib>=3.6.0
+seaborn>=0.12.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Date/Time Handling
+pytz>=2023.3
+
+# Additional Trading Tools
+yfinance>=0.2.0
+ta-lib>=0.4.0
+requests>=2.31.0
+
+# Jupyter Notebook Support (optional)
+jupyter>=1.0.0
+ipykernel>=6.25.0
+
+# Logging and Utilities
+loguru>=0.7.0
+schedule>=1.2.0
