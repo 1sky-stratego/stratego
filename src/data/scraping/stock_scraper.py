@@ -140,7 +140,7 @@ class AIGPUEnergyStockScraper:
             return
         
         # File paths
-        data_dir = project_root / "data" / "collected"
+        data_dir = project_root / "src" / "data" / "collected"
         csv_filename = data_dir / "ai_gpu_energy_stocks.csv"
         json_filename = data_dir / "ai_gpu_energy_stocks.json"
         excel_filename = data_dir / "ai_gpu_energy_stocks.xlsx"
