@@ -15,8 +15,23 @@ from dotenv import load_dotenv
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Path stuff
+project_root = Path(__file__).resolve().parent.parent.parent.parent
+env_path = project_root / '.env'
+load_dotenv(dotenv_path=env_path)
+
+API_KEY = os.getenv("APCA_API_KEY")
+SECRET_KEY = os.getenv("APCA_SECRET_KEY")
+BASE_URL = "https://paper-api.alpaca.markets"
+
 # Create directories if they don't exist
-Path("data/collected").mkdir(parents=True, exist_ok=True)
+data_dir = project_root / "data" / "collected"
+csv_filename = data_dir / "ai_gpu_energy_stocks.csv"
+json_filename = data_dir / "ai_gpu_energy_stocks.json"
+excel_filename = data_dir / "ai_gpu_energy_stocks.xlsx"
+summary_filename = data_dir / "summary_stats.json"
+
+data_dir.mkdir(parents=True, exist_ok=True)
 
 class AIGPUEnergyStockScraper:
     def __init__(self, api_key, secret_key, base_url='https://paper-api.alpaca.markets'):
@@ -201,12 +216,6 @@ class AIGPUEnergyStockScraper:
         
         current_df = pd.DataFrame(self.stocks_data)
         timestamp = datetime.now().isoformat()
-        
-        # File paths
-        csv_filename = "data/collected/ai_gpu_energy_stocks.csv"
-        json_filename = "data/collected/ai_gpu_energy_stocks.json"
-        excel_filename = "data/collected/ai_gpu_energy_stocks.xlsx"
-        summary_filename = "data/collected/summary_stats.json"
         
         # Handle CSV - append or create
         if os.path.exists(csv_filename):
