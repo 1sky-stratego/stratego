@@ -1,0 +1,76 @@
+{
+  "last_updated": "2025-05-29T18:17:21.808973",
+  "total_stocks_current": 88,
+  "total_collections": 2,
+  "current_stats": {
+    "avg_price": 150.43349022727273,
+    "price_range": "$0.00 - $1015.82",
+    "avg_ytd_return": 14.673665183692405,
+    "top_performers": [
+      {
+        "symbol": "AGFY",
+        "ytd_return": 541.333332462398
+      },
+      {
+        "symbol": "PLTR",
+        "ytd_return": 487.2015088274989
+      },
+      {
+        "symbol": "BBAI",
+        "ytd_return": 157.52942248941727
+      },
+      {
+        "symbol": "SOUN",
+        "ytd_return": 126.70213117811046
+      },
+      {
+        "symbol": "NET",
+        "ytd_return": 118.46410948019268
+      }
+    ],
+    "bottom_performers": [
+      {
+        "symbol": "AITX",
+        "ytd_return": -80.71942459539896
+      },
+      {
+        "symbol": "FCEL",
+        "ytd_return": -78.80952384556592
+      },
+      {
+        "symbol": "PLUG",
+        "ytd_return": -71.30312627102246
+      },
+      {
+        "symbol": "ENPH",
+        "ytd_return": -69.1343802884954
+      },
+      {
+        "symbol": "SEDG",
+        "ytd_return": -65.79489262640878
+      }
+    ],
+    "most_volatile": [
+      {
+        "symbol": "HYLN",
+        "volatility_annualized": 2.091054597910041
+      },
+      {
+        "symbol": "AGFY",
+        "volatility_annualized": 1.94514060627868
+      },
+      {
+        "symbol": "RUN",
+        "volatility_annualized": 1.7747910065023054
+      },
+      {
+        "symbol": "SEDG",
+        "volatility_annualized": 1.5742152647538712
+      },
+      {
+        "symbol": "FCEL",
+        "volatility_annualized": 1.25047141533519
+      }
+    ]
+  }
+}
