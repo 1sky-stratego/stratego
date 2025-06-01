@@ -1,75 +1,75 @@
 {
-  "last_updated": "2025-05-29T18:21:46.959249",
+  "last_updated": "2025-06-01T00:43:05.380718",
   "total_stocks_current": 88,
-  "total_collections": 3,
+  "total_collections": 4,
   "current_stats": {
-    "avg_price": 150.08114477272727,
-    "price_range": "$0.00 - $1013.03",
-    "avg_ytd_return": 14.48170546163422,
+    "avg_price": 149.8732284090909,
+    "price_range": "$0.00 - $1011.09",
+    "avg_ytd_return": 15.970723670557323,
     "top_performers": [
       {
         "symbol": "AGFY",
-        "ytd_return": 549.4291998084813
+        "ytd_return": 541.4918578665128
       },
       {
         "symbol": "PLTR",
-        "ytd_return": 484.52721300939254
+        "ytd_return": 507.8413142265332
       },
       {
         "symbol": "BBAI",
-        "ytd_return": 156.09803834487636
-      },
-      {
-        "symbol": "SOUN",
-        "ytd_return": 125.10852103978101
+        "ytd_return": 177.33332316080728
       },
       {
         "symbol": "NET",
-        "ytd_return": 117.95212838810568
+        "ytd_return": 145.07311775213182
+      },
+      {
+        "symbol": "SOUN",
+        "ytd_return": 100.19800544217534
       }
     ],
     "bottom_performers": [
       {
-        "symbol": "AITX",
-        "ytd_return": -80.71942459539896
+        "symbol": "FCEL",
+        "ytd_return": -81.07407357957628
       },
       {
-        "symbol": "FCEL",
-        "ytd_return": -79.03571495069126
+        "symbol": "AITX",
+        "ytd_return": -80.66298459806035
       },
       {
         "symbol": "PLUG",
-        "ytd_return": -71.50000040978193
+        "ytd_return": -73.57357311130954
       },
       {
         "symbol": "ENPH",
-        "ytd_return": -69.22587353500332
+        "ytd_return": -67.6387811603945
       },
       {
         "symbol": "SEDG",
-        "ytd_return": -65.98023066191672
+        "ytd_return": -63.543580325693696
       }
     ],
     "most_volatile": [
       {
         "symbol": "HYLN",
-        "volatility_annualized": 2.0933913866808838
+        "volatility_annualized": 2.103087905615612
       },
       {
         "symbol": "AGFY",
-        "volatility_annualized": 1.9370042286395273
+        "volatility_annualized": 1.896072260532236
       },
       {
         "symbol": "RUN",
-        "volatility_annualized": 1.7747607885556267
+        "volatility_annualized": 1.7974085401910267
       },
       {
         "symbol": "SEDG",
-        "volatility_annualized": 1.5760519126969141
+        "volatility_annualized": 1.5868181695105892
       },
       {
         "symbol": "FCEL",
-        "volatility_annualized": 1.2578897627229997
+        "volatility_annualized": 1.2728002785735975
       }
     ]
   }
