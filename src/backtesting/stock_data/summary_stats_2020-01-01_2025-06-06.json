@@ -1,0 +1,89 @@
+{
+  "collection_info": {
+    "total_stocks": 88,
+    "successful_downloads": 88,
+    "failed_downloads": 12,
+    "collection_date": "2025-06-06 00:32:02",
+    "data_period": "2020-01-01 to 2025-06-06"
+  },
+  "price_statistics": {
+    "avg_current_price": 152.6294318181818,
+    "median_current_price": 87.33500000000001,
+    "min_current_price": 0.0,
+    "max_current_price": 1017.6
+  },
+  "return_statistics": {
+    "avg_ytd_return": -3.1982954545454545,
+    "median_ytd_return": -1.15,
+    "best_ytd_return": 59.48,
+    "worst_ytd_return": -62.6
+  },
+  "volatility_statistics": {
+    "avg_volatility": 60.72238636363636,
+    "median_volatility": 46.635000000000005,
+    "min_volatility": 19.44,
+    "max_volatility": 233.77
+  },
+  "market_cap_distribution": {
+    "Large Cap": 62,
+    "Small Cap": 13,
+    "Mid Cap": 12,
+    "Unknown": 1
+  },
+  "top_performers": {
+    "best_ytd": [
+      {
+        "symbol": "PLTR",
+        "name": "Palantir Technologies Inc.",
+        "ytd_return": 59.48
+      },
+      {
+        "symbol": "NET",
+        "name": "Cloudflare, Inc.",
+        "ytd_return": 56.68
+      },
+      {
+        "symbol": "SNOW",
+        "name": "Snowflake Inc.",
+        "ytd_return": 33.39
+      },
+      {
+        "symbol": "CRWD",
+        "name": "CrowdStrike Holdings, Inc.",
+        "ytd_return": 33.28
+      },
+      {
+        "symbol": "OKTA",
+        "name": "Okta, Inc.",
+        "ytd_return": 32.16
+      }
+    ],
+    "worst_ytd": [
+      {
+        "symbol": "PLUG",
+        "name": "Plug Power Inc.",
+        "ytd_return": -62.6
+      },
+      {
+        "symbol": "VERI",
+        "name": "Veritone, Inc.",
+        "ytd_return": -53.75
+      },
+      {
+        "symbol": "SOUN",
+        "name": "SoundHound AI, Inc.",
+        "ytd_return": -53.03
+      },
+      {
+        "symbol": "FCEL",
+        "name": "FuelCell Energy, Inc.",
+        "ytd_return": -49.86
+      },
+      {
+        "symbol": "AITX",
+        "name": "Artificial Intelligence Technology Solutions Inc.",
+        "ytd_return": -48.0
+      }
+    ]
+  }
+}

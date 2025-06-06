@@ -216,6 +216,7 @@ class TradingAlgorithm:
         """Train ARIMA model on price data"""
         try:
             # Use log returns for better stationarity
+            price_series = price_series[~np.isnan(price_series).any(axis=1)
             log_prices = np.log(price_series.dropna())
             log_returns = log_prices.diff().dropna()
             
@@ -633,7 +634,7 @@ class ARIMALinearStrategy(Strategy):
         elif signal == 'SELL' and self.position:
             self.position.close()
 
-            
+
 # Example usage for live trading:
 if __name__ == "__main__":
     algorithm = TradingAlgorithm(api_key, secret_key, base_url)
