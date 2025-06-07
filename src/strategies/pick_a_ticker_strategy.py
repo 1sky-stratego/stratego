@@ -72,9 +72,16 @@ class TradingAlgorithm:
         try:
             df = pd.read_csv(file_path) 
             
-            # Convert timestamp
             df['timestamp'] = pd.to_datetime(df['data_collected_at'])
-            df.set_index('timestamp', inplace=True)
+
+            # Debug: Check for duplicates BEFORE setting index
+            print("Duplicate timestamps found:")
+            duplicates = df[df.duplicated(subset=['timestamp'], keep=False)]
+            print(duplicates[['timestamp']].head(10))
+
+            print(f"\nTotal duplicate timestamp count: {len(duplicates)}")
+            print(f"Unique timestamps: {df['timestamp'].nunique()}")
+            print(f"Total rows: {len(df)}")
             
             # Map columns to standard OHLCV format
             # Since you only have current_price, we'll use it for all OHLC

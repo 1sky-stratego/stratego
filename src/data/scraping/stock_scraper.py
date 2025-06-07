@@ -74,15 +74,15 @@ class AIGPUEnergyStockScraper:
             day_low = day_data['Low'].iloc[-1]
 
             info = ticker.info
-            current_price = info.get('regularMarketPrice', hist['Close'].iloc[-1])
+            close = info.get('regularMarketPrice', hist['Close'].iloc[-1])
 
             stock_data = {
                 'symbol': symbol,
                 'name': info.get('shortName', symbol),
                 'open': float(open_price),
-                'current_price': float(current_price),
-                'daily_high': float(day_high),
-                'daily_low': float(day_low),
+                'close': float(close),
+                'high': float(day_high),
+                'low': float(day_low),
                 'avg_volume_30d': float(hist['Volume'].tail(30).mean()),
                 'price_52w_high': float(hist['High'].max()),
                 'price_52w_low': float(hist['Low'].min()),
@@ -90,7 +90,7 @@ class AIGPUEnergyStockScraper:
                 'volatility_annualized': float(hist['volatility'].iloc[-1]) if not pd.isna(hist['volatility'].iloc[-1]) else None,
                 'sma_20': float(hist['sma_20'].iloc[-1]) if not pd.isna(hist['sma_20'].iloc[-1]) else None,
                 'sma_50': float(hist['sma_50'].iloc[-1]) if not pd.isna(hist['sma_50'].iloc[-1]) else None,
-                'market_cap_category': self._categorize_by_price(current_price),
+                'market_cap_category': self._categorize_by_price(close),
                 'data_collected_at': datetime.now().isoformat(),
                 'bars_count': len(hist)
             }
@@ -183,10 +183,10 @@ def main():
         df = pd.DataFrame(scraper.stocks_data)
         print(f"\nQuick Analysis:")
         print(f"Total stocks collected: {len(df)}")
-        print(f"Average current price: ${df['current_price'].mean():.2f}")
+        print(f"Average current price: ${df['close'].mean():.2f}")
         print(f"Average YTD return: {df['ytd_return'].mean():.2f}%")
         print(f"\nTop 5 YTD performers:")
-        print(df.nlargest(5, 'ytd_return')[['symbol', 'current_price', 'ytd_return']])
+        print(df.nlargest(5, 'ytd_return')[['symbol', 'close', 'ytd_return']])
     else:
         print("No data was successfully collected. Please check your internet connection.")
 

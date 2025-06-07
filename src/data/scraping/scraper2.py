@@ -29,29 +29,7 @@ class AIGPUEnergyStockScraper:
     def __init__(self):
         self.stocks_data = []
 
-        self.target_stocks = [
-            # AI/GPU Leaders
-            'NVDA', 'AMD', 'INTC', 'QCOM', 'AVGO', 'MRVL', 'XLNX', 'LRCX', 'KLAC', 'AMAT',
-            'ASML', 'TSM', 'MU', 'MCHP', 'ADI', 'TXN', 'NXPI', 'SWKS', 'QRVO', 'MPWR',
-            
-            # AI Software/Cloud
-            'MSFT', 'GOOGL', 'AMZN', 'META', 'ORCL', 'CRM', 'NOW', 'SNOW', 'PLTR', 'AI',
-            'C3AI', 'UPST', 'PATH', 'BBAI', 'SOUN', 'GFAI', 'AITX', 'AGFY', 'VERI', 'DTEA',
-            
-            # Energy Infrastructure
-            'TSLA', 'ENPH', 'SEDG', 'FSLR', 'SPWR', 'RUN', 'NEE', 'AEP', 'EXC', 'D',
-            'SO', 'DUK', 'XEL', 'SRE', 'PEG', 'ED', 'EIX', 'PCG', 'AWK', 'CNP',
-            
-            # Energy Storage/Battery
-            'PLUG', 'BE', 'BLDP', 'FCEL', 'BALLARD', 'QS', 'NKLA', 'HYLN', 'CLSK', 'RIOT',
-            
-            # Data Centers/Infrastructure  
-            'DLR', 'PLD', 'AMT', 'CCI', 'SBAC', 'EQIX', 'CONE', 'REIT', 'VTR', 'CORR',
-            
-            # Additional AI/Tech
-            'AAPL', 'IBM', 'CSCO', 'HPQ', 'DELL', 'VMW', 'WORK', 'ZM', 'DDOG', 'CRWD',
-            'OKTA', 'SPLK', 'TEAM', 'ATLASSIAN', 'MDB', 'ELASTIC', 'DOCN', 'NET', 'FSLY', 'ESTC'
-        ]
+        self.target_stocks = os.getenv("TARGET_STOCKS").split(",")
 
     def calculate_technical_indicators(self, df):
         """Calculate technical indicators for the historical data"""
@@ -158,8 +136,8 @@ class AIGPUEnergyStockScraper:
             hist = self.calculate_technical_indicators(hist)
             
             # Add market cap category based on most recent price
-            current_price = hist['close'].iloc[-1]
-            hist['market_cap_category'] = self._categorize_by_price(current_price)
+            close = hist['close'].iloc[-1]
+            hist['market_cap_category'] = self._categorize_by_price(close)
             
             # Add data collection timestamp
             hist['data_collected_at'] = datetime.now().isoformat()
@@ -224,7 +202,7 @@ class AIGPUEnergyStockScraper:
         
         # File paths
         data_dir = project_root / "src" / "data" / "collected"
-        csv_filename = data_dir / "ai_gpu_energy_stocks_3year.csv"
+        csv_filename = data_dir / "training_data.csv"
         data_dir.mkdir(parents=True, exist_ok=True)
         
         # Save the data
