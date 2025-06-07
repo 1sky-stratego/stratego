@@ -17,6 +17,8 @@ dotenv_path = load_dotenv()
 print(f"Found .env file at: {dotenv_path}")
 load_dotenv(dotenv_path=env_path)
 
+csv_path = 'src/data/collected/ai_gpu_energy_stocks.csv'
+
 # APIs
 api_key = os.getenv('ALPACA_API_KEY')
 secret_key = os.getenv('ALPACA_SECRET_KEY')
@@ -34,6 +36,12 @@ warnings.filterwarnings('ignore')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Import parameters
+PARAM_prediction_horizon = int(os.getenv('PARAM_PREDICTION_HORIZON'))
+PARAM_confidence_threshold = float(os.getenv('PARAM_CONFIDENCE_THRESHOLD'))
+PARAM_min_data_points = int(os.getenv('PARAM_MIN_DATA_POINTS'))
+
+
 class TradingAlgorithm:
     def __init__(self, api_key, secret_key, base_url="https://paper-api.alpaca.markets"):
         """
@@ -49,43 +57,34 @@ class TradingAlgorithm:
         self.linear_model = LinearRegression()
         
         # Algorithm parameters (customize as needed)
-        self.prediction_horizon = 5
-        self.confidence_threshold = 0.02  # 2% threshold for stronger signals
-        self.min_data_points = 50
+        self.prediction_horizon = PARAM_prediction_horizon
+        self.confidence_threshold = PARAM_confidence_threshold
+        self.min_data_points = PARAM_min_data_points
         
         logger.info("Trading algorithm initialized")
-    
+
     def load_data(self, file_path):
         """
         Load stock data from CSV file
         
-        Your CSV format: symbol,name,current_price,avg_volume_30d,price_52w_high,price_52w_low,ytd_return,volatility_annualized,sma_20,sma_50,market_cap_category,data_collected_at,bars_count
+        CSV column format: symbol,name,current_price,avg_volume_30d,price_52w_high,price_52w_low,ytd_return,volatility_annualized,sma_20,sma_50,market_cap_category,data_collected_at,bars_count,open,daily_high,daily_low
         """
         try:
-            df = pd.read_csv(file_path)
-            
-            # Your actual column names
-            expected_columns = [
-                'symbol', 'name', 'current_price', 'avg_volume_30d', 'price_52w_high', 
-                'price_52w_low', 'ytd_return', 'volatility_annualized', 'sma_20', 
-                'sma_50', 'market_cap_category', 'data_collected_at', 'bars_count'
-            ]
-            
-            # If no headers, assign them
-            if df.columns[0] == 0 or 'Unnamed' in str(df.columns[0]):
-                df.columns = expected_columns
+            df = pd.read_csv(file_path) 
             
             # Convert timestamp
             df['timestamp'] = pd.to_datetime(df['data_collected_at'])
             df.set_index('timestamp', inplace=True)
             
-            # Map your columns to standard OHLCV format
+            # Map columns to standard OHLCV format
             # Since you only have current_price, we'll use it for all OHLC
             df['close'] = pd.to_numeric(df['current_price'], errors='coerce')
-            df['open'] = df['close']  # Use current price as open
-            df['high'] = pd.to_numeric(df['price_52w_high'], errors='coerce') 
-            df['low'] = pd.to_numeric(df['price_52w_low'], errors='coerce')
+            df['open'] = pd.to_numeric(df['open'], errors='coerce')
+            df['yr_high'] = pd.to_numeric(df['price_52w_high'], errors='coerce') 
+            df['yr_low'] = pd.to_numeric(df['price_52w_low'], errors='coerce')
             df['volume'] = pd.to_numeric(df['avg_volume_30d'], errors='coerce')
+            df['day_high'] = pd.to_numeric(df['daily_high'], errors='coerce')
+            df['day_low'] = pd.to_numeric(df['daily_low'], errors='coerce')
             
             # Keep your additional columns as they contain useful features
             df['sma_20'] = pd.to_numeric(df['sma_20'], errors='coerce')
@@ -124,9 +123,9 @@ class TradingAlgorithm:
             except:
                 pass
             return None
-    
+        
     def create_features(self, df):
-        """Create technical indicators for linear regression - enhanced for your data format"""
+        """Create technical indicators for linear regression"""
         df = df.copy()
         
         # You already have sma_20 and sma_50, let's use them and add more
@@ -192,26 +191,43 @@ class TradingAlgorithm:
         else:
             df['volatility'] = df['volatility_annualized']
         
-        # 52-week high/low ratios (using your existing data)
-        if 'price_52w_high' in df.columns and 'price_52w_low' in df.columns:
-            df['price_to_52w_high'] = df['close'] / df['price_52w_high']
-            df['price_to_52w_low'] = df['close'] / df['price_52w_low']
-            df['52w_range_position'] = (df['close'] - df['price_52w_low']) / (df['price_52w_high'] - df['price_52w_low'])
+        # 52-week high/low ratios 
+        if 'yr_high' in df.columns and 'yr_low' in df.columns:
+            df['price_to_52w_high'] = df['close'] / df['yr_high']
+            df['price_to_52w_low'] = df['close'] / df['yr_low']
+            df['52w_range_position'] = (df['close'] - df['yr_low']) / (df['yr_high'] - df['yr_low'])
         
-        # YTD return momentum (if available)
+        # Daily high/low ratios
+        if 'daily_high' in df.columns and 'daily_low' in df.columns:
+            df['price_to_day_high'] = df['close'] / df['daily_high']
+            df['price_to_day_low'] = df['close'] / df['daily_low']
+            df['daily_range_position'] = (df['close'] - df['daily_low']) / (df['daily_high'] - df['daily_low'])
+        
+        # YTD return momentum 
         if 'ytd_return' in df.columns:
             df['ytd_momentum'] = df['ytd_return']
+
+        # Daily momentum
+        if 'daily_return' in df.columns:
+            df['daily_momentum'] = df['ytd_return']
         
         # Support and Resistance levels
-        df['support'] = df['low'].rolling(20).min()
-        df['resistance'] = df['high'].rolling(20).max()
-        df['support_distance'] = (df['close'] - df['support']) / df['close']
-        df['resistance_distance'] = (df['resistance'] - df['close']) / df['close']
+        if 'daily_low' in df.columns and 'daily_high' in df.columns:
+            df['support'] = df['daily_low'].rolling(20).min()
+            df['resistance'] = df['daily_high'].rolling(20).max()
+            df['support_distance'] = (df['close'] - df['support']) / df['close']
+            df['resistance_distance'] = (df['resistance'] - df['close']) / df['close']
+        else:
+            # Fallback: use close price for support/resistance
+            df['support'] = df['close'].rolling(20).min()
+            df['resistance'] = df['close'].rolling(20).max()
+            df['support_distance'] = (df['close'] - df['support']) / df['close']
+            df['resistance_distance'] = (df['resistance'] - df['close']) / df['close']
         
-        return df
-    
+        return df   
+
     def train_linear_model(self, df):
-        """Train linear regression model - enhanced for your data format"""
+        """Train linear regression model"""
         try:
             # Enhanced feature set that leverages your existing data
             feature_cols = [
@@ -230,11 +246,17 @@ class TradingAlgorithm:
                 
                 # Volatility
                 'volatility',
+
+                # daily positioning
+                'price_to_day_high', 'price_to_day_low', 'daily_range_position',
+
+                # daily performance
+                'daily_momentum',
                 
-                # 52-week positioning (if available)
+                # 52-week positioning 
                 'price_to_52w_high', 'price_to_52w_low', '52w_range_position',
                 
-                # YTD performance (if available)
+                # YTD performance 
                 'ytd_momentum',
                 
                 # Support/Resistance
@@ -244,18 +266,13 @@ class TradingAlgorithm:
             # Filter features that actually exist in the dataframe
             available_features = [col for col in feature_cols if col in df.columns and not df[col].isna().all()]
             
-            if len(available_features) < 5:
-                logger.warning(f"Only {len(available_features)} features available, using basic set")
-                available_features = ['sma_20', 'rsi', 'macd', 'bb_position', 'volume_ratio']
-                available_features = [col for col in available_features if col in df.columns]
-            
             logger.info(f"Using {len(available_features)} features: {available_features}")
             
             # Create feature matrix
             X = df[available_features].dropna()
             
             # Create target: future price change
-            future_returns = df['close'].shift(-self.prediction_horizon).pct_change()
+            future_returns = df['close'].shift(-int(self.prediction_horizon)).pct_change()
             y = future_returns.dropna()
             
             # Align data
@@ -321,7 +338,7 @@ class TradingAlgorithm:
         logger.info(f"LR prediction: {lr_prediction:.4f} (threshold: ±{self.confidence_threshold})")
         
         return decision
-    
+
     def execute_trade(self, symbol, signal, quantity=100):
         """Execute trade via Alpaca API"""
         try:
@@ -332,57 +349,55 @@ class TradingAlgorithm:
             except:
                 current_qty = 0
             
-            # Execute based on signal
-            if signal == 'BUY' and current_qty <= 0:
-                # Close short position and go long
-                if current_qty < 0:
-                    self.api.submit_order(
-                        symbol=symbol,
-                        qty=abs(current_qty),
-                        side='buy',
-                        type='market',
-                        time_in_force='gtc'
-                    )
-                    logger.info(f"Closed short position of {abs(current_qty)} shares")
+            # Check buying power
+            try:
+                account = self.api.get_account()
+                buying_power = float(account.buying_power)
+
+                # Get current price to establish trade value
+                quote = self.api.get_latest_trade(symbol)
+                stock_price = float(quote.price)
+                trade_value = stock_price * quantity
+            except Exception as e:
+                logger.warning(f"Could not get account info: {e}")
+                buying_power = 0
+                trade_value = 0
+            
+            # Execute based on signals
+            if signal == 'BUY':
+                if trade_value > buying_power:
+                    logger.warning(f"Insufficient buying power: need ${trade_value:.2f}, have ${buying_power:.2f}")
+                    return
                 
-                # Open long position
                 self.api.submit_order(
-                    symbol=symbol,
-                    qty=quantity,
-                    side='buy',
-                    type='market',
-                    time_in_force='gtc'
+                    symbol = symbol,
+                    qty = quantity,
+                    side = 'buy',
+                    type = 'market',
+                    time_in_force = 'gtc'
                 )
-                logger.info(f"Bought {quantity} shares of {symbol}")
+
+                new_position = current_qty + quantity
+                logger.info(f"Bought {quantity} shares of symbol. Position: {current_qty} → {new_position}")
+                        
+            elif signal == 'SELL':
                 
-            elif signal == 'SELL' and current_qty >= 0:
-                # Close long position and go short
                 if current_qty > 0:
+                    sell_qty = min(current_qty, quantity)
                     self.api.submit_order(
-                        symbol=symbol,
-                        qty=current_qty,
-                        side='sell',
-                        type='market',
-                        time_in_force='gtc'
+                        symbol = symbol,
+                        qty = sell_qty,
+                        side = 'sell',
+                        type = 'market',
+                        time_in_force = 'gtc'
                     )
-                    logger.info(f"Sold {current_qty} shares")
-                
-                # Open short position
-                self.api.submit_order(
-                    symbol=symbol,
-                    qty=quantity,
-                    side='sell',
-                    type='market',
-                    time_in_force='gtc'
-                )
-                logger.info(f"Shorted {quantity} shares of {symbol}")
-                
-            else:
-                logger.info(f"No action taken for {symbol} - Signal: {signal}, Current position: {current_qty}")
-                
-        except Exception as e:
+                    new_position = current_qty - sell_qty
+                    logger.info(f"Sold {sell_qty} shares of {symbol}. Position: {current_qty} → {new_position}")
+
+        except Exception as  e:
             logger.error(f"Trade execution failed: {e}")
-    
+
+
     def run_algorithm(self, data_file, symbol, quantity=100):
         """
         Main function to run the trading algorithm
@@ -408,142 +423,23 @@ class TradingAlgorithm:
         
         logger.info(f"Algorithm completed for {symbol}")
 
-# Backtesting Strategy Wrapper
-from backtesting import Strategy
-import backtesting
+def main():
+   """Main function to test the trading algorithm"""
+   try:
+       # Initialize the trading algorithm
+       algo = TradingAlgorithm(api_key, secret_key, base_url)
+       
+       # Test parameters
+       data_file = csv_path
+       symbol = "NVDA"  # Replace with your desired stock symbol
+       quantity = 100   # Number of shares to trade
+       
+       # Run the algorithm
+       algo.run_algorithm(data_file, symbol, quantity)
+       
+   except Exception as e:
+        logger.error(f"Main execution failed: {e}")
+        print(f"Error: {e}")
 
-class LinearRegressionStrategy(Strategy):
-    """
-    Backtesting wrapper for Linear Regression strategy
-    This class will be detected by your backtesting system
-    """
-    
-    def init(self):
-        """Initialize strategy - called once at start of backtest"""
-        # Initialize our algorithm components (without Alpaca API for backtesting)
-        self.scaler = StandardScaler()
-        self.linear_model = LinearRegression()
-        
-        # Algorithm parameters
-        self.prediction_horizon = 5
-        self.confidence_threshold = 0.02
-        self.min_data_points = 50
-        
-    def create_features_bt(self, close_prices, high_prices, low_prices, volume):
-        """Create features for backtesting (uses backtesting data format)"""
-        df = pd.DataFrame({
-            'close': close_prices,
-            'high': high_prices, 
-            'low': low_prices,
-            'volume': volume
-        })
-        
-        # Create the same technical indicators as in the main algorithm
-        df['sma_5'] = df['close'].rolling(5).mean()
-        df['sma_10'] = df['close'].rolling(10).mean()
-        df['sma_20'] = df['close'].rolling(20).mean()
-        df['ema_5'] = df['close'].ewm(span=5).mean()
-        df['ema_10'] = df['close'].ewm(span=10).mean()
-        
-        # RSI
-        delta = df['close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-        rs = gain / loss
-        df['rsi'] = 100 - (100 / (1 + rs))
-        
-        # MACD
-        ema_12 = df['close'].ewm(span=12).mean()
-        ema_26 = df['close'].ewm(span=26).mean()
-        df['macd'] = ema_12 - ema_26
-        df['macd_signal'] = df['macd'].ewm(span=9).mean()
-        
-        # Bollinger Bands
-        bb_middle = df['close'].rolling(20).mean()
-        bb_std = df['close'].rolling(20).std()
-        bb_upper = bb_middle + (bb_std * 2)
-        bb_lower = bb_middle - (bb_std * 2)
-        df['bb_position'] = (df['close'] - bb_lower) / (bb_upper - bb_lower)
-        
-        # Volume indicators
-        df['volume_sma'] = df['volume'].rolling(20).mean()
-        df['volume_ratio'] = df['volume'] / df['volume_sma']
-        
-        # Momentum
-        df['momentum_5'] = df['close'] / df['close'].shift(5) - 1
-        df['momentum_10'] = df['close'] / df['close'].shift(10) - 1
-        
-        # Volatility
-        df['volatility'] = df['close'].rolling(20).std() / df['close'].rolling(20).mean()
-        
-        return df
-    
-    def generate_signal_bt(self):
-        """Generate trading signal for backtesting"""
-        # Get current data length
-        current_idx = len(self.data.Close) - 1
-        
-        if current_idx < self.min_data_points:
-            return 'HOLD'
-        
-        # Get recent data for analysis
-        lookback = min(100, current_idx + 1)
-        close_prices = self.data.Close[-lookback:]
-        high_prices = self.data.High[-lookback:]
-        low_prices = self.data.Low[-lookback:]
-        volume = self.data.Volume[-lookback:]
-        
-        try:
-            # Linear regression prediction
-            df_features = self.create_features_bt(close_prices, high_prices, low_prices, volume)
-            feature_cols = ['sma_5', 'sma_10', 'sma_20', 'ema_5', 'ema_10', 'rsi', 
-                           'macd', 'macd_signal', 'bb_position', 'volume_ratio', 
-                           'momentum_5', 'momentum_10', 'volatility']
-            
-            X = df_features[feature_cols].dropna()
-            
-            if len(X) >= 30:
-                # Create target for training
-                future_returns = df_features['close'].shift(-self.prediction_horizon).pct_change()
-                y = future_returns.dropna()
-                
-                # Align data
-                min_len = min(len(X), len(y))
-                X_train = X.iloc[:min_len-1]  # Leave last point for prediction
-                y_train = y.iloc[:min_len-1]
-                
-                if len(X_train) > 10:
-                    X_scaled = self.scaler.fit_transform(X_train)
-                    self.linear_model.fit(X_scaled, y_train)
-                    
-                    # Predict on latest data
-                    latest_features = X.iloc[-1:].values
-                    latest_scaled = self.scaler.transform(latest_features)
-                    lr_prediction = self.linear_model.predict(latest_scaled)[0]
-                    
-                    # Generate signal
-                    if lr_prediction > self.confidence_threshold:
-                        return 'BUY'
-                    elif lr_prediction < -self.confidence_threshold:
-                        return 'SELL'
-                    else:
-                        return 'HOLD'
-                else:
-                    return 'HOLD'
-            else:
-                return 'HOLD'
-                
-        except Exception as e:
-            logger.error(f"Signal generation error: {e}")
-            return 'HOLD'
-    
-    def next(self):
-        """Called for each bar during backtesting"""
-        signal = self.generate_signal_bt()
-        
-        if signal == 'BUY' and not self.position:
-            self.buy()
-        elif signal == 'SELL' and self.position:
-            self.position.close()
-
-
+if __name__ == "__main__":
+   main()
