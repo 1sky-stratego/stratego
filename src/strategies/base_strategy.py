@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
-from statsmodels.tsa.arima.model import ARIMA
 import alpaca_trade_api as tradeapi
 import warnings
 import logging
@@ -50,9 +49,8 @@ class TradingAlgorithm:
         self.linear_model = LinearRegression()
         
         # Algorithm parameters (customize as needed)
-        self.arima_order = (1, 1, 1)
         self.prediction_horizon = 5
-        self.confidence_threshold = 0.6
+        self.confidence_threshold = 0.02  # 2% threshold for stronger signals
         self.min_data_points = 50
         
         logger.info("Trading algorithm initialized")
@@ -212,32 +210,6 @@ class TradingAlgorithm:
         
         return df
     
-    def train_arima_model(self, price_series):
-        """Train ARIMA model on price data"""
-        try:
-            # Use log returns for better stationarity
-            price_series = price_series[~np.isnan(price_series).any(axis=1)
-            log_prices = np.log(price_series.dropna())
-            log_returns = log_prices.diff().dropna()
-            
-            if len(log_returns) < self.min_data_points:
-                logger.warning("Insufficient data for ARIMA model")
-                return None, None
-            
-            model = ARIMA(log_returns, order=self.arima_order)
-            fitted_model = model.fit()
-            
-            # Generate forecast
-            forecast = fitted_model.forecast(steps=self.prediction_horizon)
-            forecast_mean = np.mean(forecast)
-            
-            logger.info("ARIMA model trained successfully")
-            return fitted_model, forecast_mean
-            
-        except Exception as e:
-            logger.error(f"ARIMA model training failed: {e}")
-            return None, None
-    
     def train_linear_model(self, df):
         """Train linear regression model - enhanced for your data format"""
         try:
@@ -320,7 +292,7 @@ class TradingAlgorithm:
     
     def generate_signal(self, df, symbol):
         """
-        Generate trading signal using ARIMA + Linear Regression
+        Generate trading signal using Linear Regression only
         
         Returns: 'BUY', 'SELL', or 'HOLD'
         """
@@ -331,50 +303,22 @@ class TradingAlgorithm:
         # Create features
         df_features = self.create_features(df)
         
-        # Train ARIMA model
-        arima_model, arima_forecast = self.train_arima_model(df['close'])
-        
         # Train Linear Regression model  
         lr_model, lr_prediction = self.train_linear_model(df_features)
         
-        # Combine signals
-        signals = []
-        
-        # ARIMA signal
-        if arima_forecast is not None:
-            if arima_forecast > 0.001:  # Positive return threshold
-                signals.append(1)  # Buy signal
-            elif arima_forecast < -0.001:  # Negative return threshold
-                signals.append(-1)  # Sell signal
-            else:
-                signals.append(0)  # Hold signal
-        
-        # Linear Regression signal
+        # Generate signal based on Linear Regression prediction
         if lr_prediction is not None:
-            if lr_prediction > 0.01:  # 1% positive return threshold
-                signals.append(1)  # Buy signal
-            elif lr_prediction < -0.01:  # 1% negative return threshold
-                signals.append(-1)  # Sell signal
+            if lr_prediction > self.confidence_threshold:
+                decision = 'BUY'
+            elif lr_prediction < -self.confidence_threshold:
+                decision = 'SELL'
             else:
-                signals.append(0)  # Hold signal
-        
-        # No valid signals
-        if not signals:
-            return 'HOLD'
-        
-        # Combine signals (majority vote)
-        signal_sum = sum(signals)
-        signal_count = len(signals)
-        
-        if signal_sum > 0 and signal_sum / signal_count >= self.confidence_threshold:
-            decision = 'BUY'
-        elif signal_sum < 0 and abs(signal_sum) / signal_count >= self.confidence_threshold:
-            decision = 'SELL'
+                decision = 'HOLD'
         else:
             decision = 'HOLD'
         
         logger.info(f"Generated signal for {symbol}: {decision}")
-        logger.info(f"ARIMA forecast: {arima_forecast}, LR prediction: {lr_prediction}")
+        logger.info(f"LR prediction: {lr_prediction:.4f} (threshold: ±{self.confidence_threshold})")
         
         return decision
     
@@ -468,9 +412,9 @@ class TradingAlgorithm:
 from backtesting import Strategy
 import backtesting
 
-class ARIMALinearStrategy(Strategy):
+class LinearRegressionStrategy(Strategy):
     """
-    Backtesting wrapper for ARIMA + Linear Regression strategy
+    Backtesting wrapper for Linear Regression strategy
     This class will be detected by your backtesting system
     """
     
@@ -481,9 +425,8 @@ class ARIMALinearStrategy(Strategy):
         self.linear_model = LinearRegression()
         
         # Algorithm parameters
-        self.arima_order = (1, 1, 1)
         self.prediction_horizon = 5
-        self.confidence_threshold = 0.6
+        self.confidence_threshold = 0.02
         self.min_data_points = 50
         
     def create_features_bt(self, close_prices, high_prices, low_prices, volume):
@@ -551,17 +494,6 @@ class ARIMALinearStrategy(Strategy):
         volume = self.data.Volume[-lookback:]
         
         try:
-            # ARIMA prediction
-            log_prices = np.log(close_prices.dropna())
-            log_returns = log_prices.diff().dropna()
-            
-            if len(log_returns) >= 30:
-                model = ARIMA(log_returns, order=self.arima_order)
-                fitted_model = model.fit()
-                arima_forecast = np.mean(fitted_model.forecast(steps=self.prediction_horizon))
-            else:
-                arima_forecast = 0
-            
             # Linear regression prediction
             df_features = self.create_features_bt(close_prices, high_prices, low_prices, volume)
             feature_cols = ['sma_5', 'sma_10', 'sma_20', 'ema_5', 'ema_10', 'rsi', 
@@ -588,36 +520,16 @@ class ARIMALinearStrategy(Strategy):
                     latest_features = X.iloc[-1:].values
                     latest_scaled = self.scaler.transform(latest_features)
                     lr_prediction = self.linear_model.predict(latest_scaled)[0]
+                    
+                    # Generate signal
+                    if lr_prediction > self.confidence_threshold:
+                        return 'BUY'
+                    elif lr_prediction < -self.confidence_threshold:
+                        return 'SELL'
+                    else:
+                        return 'HOLD'
                 else:
-                    lr_prediction = 0
-            else:
-                lr_prediction = 0
-            
-            # Combine signals
-            signals = []
-            
-            if arima_forecast > 0.001:
-                signals.append(1)
-            elif arima_forecast < -0.001:
-                signals.append(-1)
-            else:
-                signals.append(0)
-            
-            if lr_prediction > 0.01:
-                signals.append(1)
-            elif lr_prediction < -0.01:
-                signals.append(-1)
-            else:
-                signals.append(0)
-            
-            # Majority vote
-            signal_sum = sum(signals)
-            signal_count = len(signals)
-            
-            if signal_sum > 0 and signal_sum / signal_count >= self.confidence_threshold:
-                return 'BUY'
-            elif signal_sum < 0 and abs(signal_sum) / signal_count >= self.confidence_threshold:
-                return 'SELL'
+                    return 'HOLD'
             else:
                 return 'HOLD'
                 
