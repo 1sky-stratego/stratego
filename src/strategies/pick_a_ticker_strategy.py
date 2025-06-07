@@ -432,7 +432,7 @@ def main():
        # Test parameters
        data_file = csv_path
        symbol = "NVDA"  # Replace with your desired stock symbol
-       quantity = 100   # Number of shares to trade
+       quantity = 10   # Number of shares to trade
        
        # Run the algorithm
        algo.run_algorithm(data_file, symbol, quantity)
