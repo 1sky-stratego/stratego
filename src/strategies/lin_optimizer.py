@@ -30,6 +30,7 @@ class TradingModelOptimizer:
 
     def evaluate_parameters(self, data_file, params, cv_folds=5):
         print(f"Testing parameters: {params}")
+        print(os.getcwd())
         self.set_environment_variables(params)
 
         try:
@@ -85,16 +86,18 @@ class TradingModelOptimizer:
             env[k] = str(v)
         env["PYTHONPATH"] = os.getcwd()
 
+        env_update_str = repr({k: str(v) for k, v in params.items()})
+
         script = f"""
 import sys
 import os
-sys.path.append(os.getcwd())
+sys.path.append('src/strategies')
 
 from lin_regression import TradingAlgorithm
-os.environ.update({repr(params)})
+os.environ.update({env_update_str})
 
 model = TradingAlgorithm()
-success = model.train_model('{train_file}', save_model=True)
+success = model.train_model('src/data/collected/training_data.csv', save_model=True)
 print(f'Training success: {{success}}')
 """
 
@@ -120,19 +123,23 @@ print(f'Training success: {{success}}')
             print(f"    Model file not found: {model_path}")
             return float('-inf')
 
+        env_update_str = repr({k: str(v) for k, v in params.items()})
+
         eval_script = f"""
 import os
 import pandas as pd
 import pickle
 import numpy as np
 from sklearn.metrics import mean_squared_error
+import sys
+sys.path.append('src/strategies')
 
-os.environ.update({repr(params)})
+os.environ.update({env_update_str})
 
 from lin_regression import TradingAlgorithm
 model = TradingAlgorithm()
-model.load_model('{model_path}')
-test_data = pd.read_csv('{test_file}')
+model.load_model()
+test_data = pd.read_csv('src/data/collected/training_data.csv')
 df_features = model.create_features(test_data)
 
 results = []
@@ -279,7 +286,7 @@ def main():
     optimizer = TradingModelOptimizer()
 
     try:
-        best_params, best_score = optimizer.grid_search(data_file, max_combinations=30)
+        best_params, best_score = optimizer.grid_search(data_file, max_combinations=1)
 
         print(f"\n{'=' * 60}")
         print("OPTIMIZATION COMPLETE")

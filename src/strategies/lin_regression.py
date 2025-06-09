@@ -31,6 +31,9 @@ PARAM_confidence_threshold = float(os.getenv('PARAM_CONFIDENCE_THRESHOLD', 0.02)
 PARAM_min_data_points = int(os.getenv('PARAM_MIN_DATA_POINTS', 100))
 PARAM_market_confidence_threshold = float(os.getenv('PARAM_MARKET_CONFIDENCE_THRESHOLD', 0.6))
 
+# Stocks
+target_stocks = os.getenv('TARGET_STOCKS').split(',')
+
 
 class TradingAlgorithm:
     def __init__(self):
@@ -59,18 +62,9 @@ class TradingAlgorithm:
         try:
             df = pd.read_csv(file_path) 
             
-            # Convert date column to timestamp
-            if 'date' in df.columns:
-                df['timestamp'] = pd.to_datetime(df['date'])
-            elif 'data_collected_at' in df.columns:
-                df['timestamp'] = pd.to_datetime(df['data_collected_at'])
-            else:
-                logger.error("No date column found")
-                return None
-            
             # Convert numeric columns
             numeric_columns = [
-                'open', 'high', 'low', 'close', 'volume', 'dividends',
+                'pen', 'high', 'low', 'close', 'volume', 'dividends',
                 'sma_5', 'sma_10', 'sma_20', 'sma_50', 'ema_5', 'ema_10', 'ema_20',
                 'price_to_sma20', 'price_to_sma50', 'sma20_to_sma50', 'rsi',
                 'macd', 'macd_signal', 'macd_histogram', 'bb_middle', 'bb_upper', 'bb_lower',
@@ -359,22 +353,30 @@ class TradingAlgorithm:
             
             # Create features and targets
             X_symbol = symbol_data[self.feature_columns].copy()
-            
+
             # Create target: future price change percentage
             future_prices = symbol_data['close'].shift(-self.prediction_horizon)
             current_prices = symbol_data['close']
-            y_symbol = ((future_prices - current_prices) / current_prices).dropna()
-            
-            # Align data
-            min_len = min(len(X_symbol), len(y_symbol))
-            if min_len > 10:  # Minimum samples per symbol
-                X_symbol_aligned = X_symbol.iloc[:min_len].dropna()
-                y_symbol_aligned = y_symbol.iloc[:len(X_symbol_aligned)]
+            y_symbol = (future_prices - current_prices) / current_prices
+
+            # Combine features and target into one DataFrame for synchronized NaN removal
+            combined = X_symbol.copy()
+            combined['target'] = y_symbol
+
+            # Drop any rows with NaNs in features or target
+            combined_clean = combined.dropna()
+
+            if len(combined_clean) > 10:  # Minimum samples per symbol
+                X_symbol_aligned = combined_clean[self.feature_columns]
+                y_symbol_aligned = combined_clean['target']
                 
-                if len(X_symbol_aligned) > 0:
-                    X_list.append(X_symbol_aligned)
-                    y_list.append(y_symbol_aligned)
-                    logger.info(f"Added {len(X_symbol_aligned)} samples from {symbol}")
+                X_list.append(X_symbol_aligned)
+                y_list.append(y_symbol_aligned)
+                logger.info(f"Added {len(X_symbol_aligned)} samples from {symbol}")
+            else:
+                logger.warning(f"Insufficient clean data for {symbol} after NaN removal: {len(combined_clean)} samples")
+
+
         
         if not X_list:
             logger.error("No valid training data found")
@@ -384,10 +386,6 @@ class TradingAlgorithm:
         X = pd.concat(X_list, ignore_index=True)
         y = pd.concat(y_list, ignore_index=True)
         
-        # Remove any remaining NaN values
-        mask = ~(X.isna().any(axis=1) | y.isna())
-        X = X[mask]
-        y = y[mask]
         
         logger.info(f"Training on {len(X)} samples from {len(X_list)} symbols")
         
@@ -411,7 +409,8 @@ class TradingAlgorithm:
             self.save_model()
         
         logger.info("Model training completed successfully")
-        return True
+        logger.info("Training Success: True")
+        return 0
 
     def save_model(self):
         """Save trained model and scaler"""
@@ -520,7 +519,7 @@ class TradingAlgorithm:
                 
                 # Scale features and predict
                 X_scaled = self.scaler.transform(X)
-                prediction = self.linear_model.predict(X_scaled)[0]
+                prediction = self.linear_model.predict(X_scaled)
                 
                 # Adjust prediction based on market sentiment
                 market_adjustment = self._calculate_market_adjustment(market_sentiment)
