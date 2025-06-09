@@ -20,9 +20,9 @@ warnings.filterwarnings('ignore')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-param_1 = os.getenv('PARAM_1', 1.532)
-param_2 = os.getenv('PARAM_2', 0.921)
-threshold = os.getenv('DECISION_THRESHOLD', 0.4)
+param_1 = float(os.getenv('PARAM_1', 0.921))
+param_2 = float(os.getenv('PARAM_2', 1.532))
+threshold = float(os.getenv('DECISION_THRESHOLD', 0.4))
 
 
 def get_stock_data(symbol, years=3):
@@ -149,9 +149,7 @@ def main():
     
     for symbol in test_symbols:
         try:
-            print(f"\nTesting {symbol}:")
-            prediction = execute(symbol)
-            print(prediction + symbol)
+            execute(symbol)
         except Exception as e:
             print(f"Error predicting {symbol}: {str(e)}")
 
