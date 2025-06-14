@@ -1,0 +1,7 @@
+{
+  "scripts": [
+    "src/strategies/dumb_col.py",
+    "src/strategies/missles.py"
+  ],
+  "last_updated": "2025-06-14T17:46:10.757251"
+}
